@@ -1,0 +1,74 @@
+#!/bin/bash
+
+seed=$1
+note_length=$2
+file=/tmp/sicktune.wav
+sample_rate=10000
+byte_rate=1
+seed_len=${#seed}
+data_size=$(($sample_rate*$seed_len*$note_length/1000))
+
+note_frequencies=(24 26 28 29 31 33 35 37 39 41 44 46 49 52 55 58 62 65 69 73 78 82 87 92 98 104 110 117 123 131 139 147 156 165 175 185 196 208 220 233 247 262 277 294 311 330 349 370 392 415 440 466 494 523 554 587 622 659 698 740 784 831 880 932 988 1047 1109 1175 1245 1319 1397 1480 1568 1661 1760 1865 1976 2093 2217 2349 2489 2637 2794 2960 3136 3322 3520 3729 3951 4186 4435 4699 4978 5274 5588 5920 6272 6645 7040 7459 7902 8372 8870 9397 9956 10548 11175 11840 12544 13290 14080 14917 15804 16744 17740 18795 19912 21096 22351 23680 25088 26580 28160 29834 31609 33488 35479 37589)
+
+# generate square wave
+function square() {
+  frequency=$1
+  num_samples=$(($sample_rate*$note_length/1000))
+  oscillations_per_second=$(($sample_rate/$frequency))
+  oscillations_per_second_2=$(($oscillations_per_second / 2))
+  oscillations=$(($num_samples / $oscillations_per_second))
+  for ((o=$oscillations; o--;)); do
+    for ((x=$oscillations_per_second_2; x--;)); do
+      printf "\x66"
+    done
+    for ((x=$oscillations_per_second_2; x--;)); do
+      printf "\x99"
+    done
+  done
+}
+
+# generate white space
+function white_space() {
+  num_samples=$(($sample_rate * $1 / 1000))
+  for ((s=$num_samples; s--;)); do
+    printf '\x50'
+  done
+}
+
+function b() {
+  printf "%.8x" $1 | sed -E 's/(..)(..)(..)(..)/\\x\4\\x\3\\x\2\\x\1/'
+}
+
+# WAV headers
+# http://soundfile.sapp.org/doc/WaveFormat/
+printf "\
+\x52\x49\x46\x46\
+$(b $(($data_size + 36)))\
+\x57\x41\x56\x45\
+\x66\x6D\x74\x20\
+\x10\x00\x00\x00\
+\x01\x00\
+\x01\x00\
+$(b $sample_rate)\
+$(b $byte_rate)\
+\x01\x00\
+\x08\x00\
+\x64\x61\x74\x61\
+$(b $data_size)\
+" > $file
+
+# data
+for (( i=0; i<${#seed}; i++ )); do
+  c="${seed:$i:1}"
+  f=$(($(printf '%d' "'$c") - 32))
+  if [ $f -ne 0 ]; then
+    frequency=${note_frequencies[$f]}
+    printf "$(square $frequency)" >> $file
+  else
+    printf "%s$(white_space $note_length)" >> $file
+  fi
+done
+
+echo $file
+
+exit 0
