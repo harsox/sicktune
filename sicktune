@@ -3,7 +3,7 @@
 seed=$1
 note_length=$2
 file=/tmp/sicktune.wav
-sample_rate=10000
+sample_rate=22050
 byte_rate=1
 seed_len=${#seed}
 data_size=$(($sample_rate*$seed_len*$note_length/1000))
@@ -15,14 +15,11 @@ function square() {
   frequency=$1
   num_samples=$(($sample_rate*$note_length/1000))
   oscillations_per_second=$(($sample_rate/$frequency))
-  oscillations_per_second_2=$(($oscillations_per_second / 2))
   oscillations=$(($num_samples / $oscillations_per_second))
   for ((o=$oscillations; o--;)); do
-    for ((x=$oscillations_per_second_2; x--;)); do
-      printf "\x66"
-    done
-    for ((x=$oscillations_per_second_2; x--;)); do
-      printf "\x99"
+    for ((x=$oscillations_per_second; x--;)); do
+      [[ $x -le $(($oscillations_per_second/2)) ]] && a="\x66" || a="\x99"
+      printf $a
     done
   done
 }
